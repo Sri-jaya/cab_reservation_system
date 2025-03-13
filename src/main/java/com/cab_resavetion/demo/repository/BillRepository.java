@@ -1,0 +1,10 @@
+package com.cab_reservation_system.project.repository;
+
+import com.cab_reservation_system.project.model.Bill;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface BillRepository extends JpaRepository<Bill, Long> {
+    Bill findByBookingId(Long bookingId);
+}
