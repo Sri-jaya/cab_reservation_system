@@ -50,6 +50,6 @@ public class AuthController {
             return ResponseEntity.ok(Map.of("token", token, "role", user.get().getRole()));
         }
 
-        return ResponseEntity.status(401).body("Invalid username or password");
+        return ResponseEntity.status(401).body("Invalid username  password");
     }
 }
