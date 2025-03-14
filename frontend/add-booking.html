@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Add Booking - Vehicle Reservation System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body class="bg-light">
+
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="dashboard.html">Dashboard</a>
+            <button id="logoutBtn" class="btn btn-danger">Logout</button>
+        </div>
+    </nav>
+
+    <!-- Add Booking Form -->
+    <div class="container mt-5">
+        <h2>Add Booking</h2>
+
+        <form id="addBookingForm">
+            <input type="hidden" id="bookingId">
+
+            <!-- Pickup Location -->
+            <div class="mb-3">
+                <label for="pickupLocation" class="form-label">Pickup Location:</label>
+                <input type="text" id="pickupLocation" class="form-control" placeholder="Enter Pickup Location" required>
+            </div>
+
+            <!-- Drop Location -->
+            <div class="mb-3">
+                <label for="dropLocation" class="form-label">Drop Location:</label>
+                <input type="text" id="dropLocation" class="form-control" placeholder="Enter Drop Location" required>
+            </div>
+
+            <!-- Booking Date -->
+            <div class="mb-3">
+                <label for="bookingDate" class="form-label">Booking Date:</label>
+                <input type="date" id="bookingDate" class="form-control" required>
+            </div>
+
+            <!-- Amount -->
+            <div class="mb-3">
+                <label for="amount" class="form-label">Amount:</label>
+                <input type="number" id="amount" class="form-control" placeholder="Enter Amount" required>
+            </div>
+
+            <!-- Customer Selection -->
+            <div class="mb-3">
+                <label for="customerId" class="form-label">Customer:</label>
+                <select id="customerId" class="form-control" required>
+                    <option value="" disabled selected>Select Customer</option>
+                    <!-- Options will be dynamically loaded here -->
+                </select>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Submit</button>
+        </form>
+
+        <div id="successMessage" class="alert alert-success mt-3 d-none">Booking added successfully!</div>
+        <!-- <div id="errorMessage" class="alert alert-danger mt-3 d-none">Failed to add booking.</div> -->
+
+        <!-- Bookings Table -->
+        <h3 class="mt-5">Existing Bookings</h3>
+        <table id="bookingTable" class="table table-striped mt-3">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Pickup Location</th>
+                    <th>Drop Location</th>
+                    <th>Booking Date</th>
+                    <th>Amount</th>
+                    <th>Customer</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Table rows will be populated dynamically here -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- JS Scripts -->
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="js/main.js"></script>
+
+    <script>
+        const apiUrl = "http://127.0.0.1:8080/api";
+        const token = localStorage.getItem("token");
+
+        document.addEventListener("DOMContentLoaded", () => {
+            // Ensure user is authenticated
+            if (!token) {
+                window.location.href = "index.html"; // Redirect to login if no token
+            }
+
+            // Logout functionality
+            const logoutBtn = document.getElementById("logoutBtn");
+            if (logoutBtn) {
+                logoutBtn.addEventListener("click", () => {
+                    localStorage.clear(); // Clear session data
+                    window.location.href = "index.html";
+                });
+            }
+
+            // Fetch customers and bookings
+            fetchCustomers();
+            fetchBookings();
+
+            // Fetch customer data to populate the customer select dropdown
+            async function fetchCustomers() {
+                try {
+                    const response = await fetch(`${apiUrl}/customers`, {
+                        method: "GET",
+                        headers: {
+                            "Authorization": `Bearer ${token}`,
+                        },
+                    });
+
+                    if (response.ok) {
+                        const customers = await response.json();
+                        populateCustomerSelect(customers);
+                    } else {
+                        throw new Error("Failed to fetch customer data");
+                    }
+                } catch (error) {
+                    console.error("Error:", error);
+                    document.getElementById("errorMessage").classList.remove("d-none");
+                }
+            }
+
+            // Populate customer select dropdown
+            function populateCustomerSelect(customers) {
+                const customerSelect = document.getElementById("customerId");
+                customers.forEach(customer => {
+                    const option = document.createElement("option");
+                    option.value = customer.id;
+                    option.textContent = customer.name;
+                    customerSelect.appendChild(option);
+                });
+            }
+
+            // Fetch bookings and populate the table
+            async function fetchBookings() {
+                try {
+                    const response = await fetch(`${apiUrl}/bookings`, {
+                        method: "GET",
+                        headers: {
+                            "Authorization": `Bearer ${token}`,
+                        },
+                    });
+
+                    if (response.ok) {
+                        const bookings = await response.json();
+                        populateBookingTable(bookings);
+                    } else {
+                        throw new Error("Failed to fetch booking data");
+                    }
+                } catch (error) {
+                    console.error("Error:", error);
+                    document.getElementById("errorMessage").classList.remove("d-none");
+                }
+            }
+
+            // Populate the bookings table
+            function populateBookingTable(bookings) {
+                const bookingTableBody = document.getElementById("bookingTable").getElementsByTagName("tbody")[0];
+                bookingTableBody.innerHTML = ""; // Clear existing rows
+
+                bookings.forEach((booking) => {
+                    const row = document.createElement("tr");
+
+                    row.innerHTML = `
+                        <td>${booking.id}</td>
+                        <td>${booking.pickupLocation}</td>
+                        <td>${booking.dropLocation}</td>
+                        <td>${booking.bookingDate}</td>
+                        <td>${booking.amount}</td>
+                        <td>${booking.customerName}</td>
+                        <td>
+                            <button class="btn btn-primary btn-sm" onclick="editBooking(${booking.id})">Edit</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteBooking(${booking.id})">Delete</button>
+                        </td>
+                    `;
+
+                    bookingTableBody.appendChild(row);
+                });
+            }
+
+            // Edit booking
+            function editBooking(id) {
+                // Find the booking by ID and populate the form for editing
+                const booking = bookings.find(b => b.id === id);
+                if (booking) {
+                    document.getElementById("bookingId").value = booking.id;
+                    document.getElementById("pickupLocation").value = booking.pickupLocation;
+                    document.getElementById("dropLocation").value = booking.dropLocation;
+                    document.getElementById("bookingDate").value = booking.bookingDate;
+                    document.getElementById("amount").value = booking.amount;
+                    document.getElementById("customerId").value = booking.customerId;
+                }
+            }
+
+            // Delete booking
+            async function deleteBooking(id) {
+                if (confirm("Are you sure you want to delete this booking?")) {
+                    try {
+                        const response = await fetch(`${apiUrl}/bookings/${id}`, {
+                            method: "DELETE",
+                            headers: {
+                                "Authorization": `Bearer ${token}`,
+                            },
+                        });
+
+                        if (response.ok) {
+                            alert("Booking deleted successfully!");
+                            fetchBookings(); // Reload the bookings list after deletion
+                        } else {
+                            throw new Error("Failed to delete booking");
+                        }
+                    } catch (error) {
+                        console.error("Error:", error);
+                        alert("Error deleting booking.");
+                    }
+                }
+            }
+
+            // Add booking form submission
+            document.getElementById("addBookingForm").addEventListener("submit", async function(event) {
+                event.preventDefault();
+                
+                const bookingData = {
+                    id: document.getElementById("bookingId").value,
+                    pickupLocation: document.getElementById("pickupLocation").value,
+                    dropLocation: document.getElementById("dropLocation").value,
+                    bookingDate: document.getElementById("bookingDate").value,
+                    amount: document.getElementById("amount").value,
+                    customerId: document.getElementById("customerId").value,
+                };
+
+                try {
+                    const response = await fetch(`${apiUrl}/bookings`, {
+                        method: bookingData.id ? "PUT" : "POST",
+                        headers: {
+                            "Authorization": `Bearer ${token}`,
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify(bookingData),
+                    });
+
+                    if (response.ok) {
+                        document.getElementById("successMessage").classList.remove("d-none");
+                        fetchBookings(); // Reload the booking list
+                    } else {
+                        throw new Error("Failed to add/update booking");
+                    }
+                } catch (error) {
+                    console.error("Error:", error);
+                    document.getElementById("errorMessage").classList.remove("d-none");
+                }
+            });
+        });
+    </script>
+
+</body>
+
+</html>
